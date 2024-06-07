@@ -94,7 +94,7 @@ app.patch('/tasks/:id', auth, async (req, res) => {
 
 app.delete('/tasks/:id', auth, async (req, res) => {
   await Task.findOneAndDelete({ _id: req.params.id, userId: req.userId });
-  res.status(204);
+  res.sendStatus(204);
 });
 
 app.listen(5000, () => {
