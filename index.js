@@ -30,11 +30,18 @@ const Task = mongoose.model('Task', TaskSchema);
 // Endpoints de autenticação
 app.post('/register', async (req, res) => {
   const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
   const hashedPassword = await bcrypt.hash(password, 10);
   try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
     const user = new User({ email, password: hashedPassword });
     await user.save();
-    res.status(201).send("User created");
+    res.status(201).json(user);
   } catch (err) {
     res.status(400).json({error: err});
     console.error(err);
