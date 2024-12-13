@@ -66,7 +66,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Delete User with your tasks
+// Delete User with their tasks
 app.delete('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
