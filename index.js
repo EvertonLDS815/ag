@@ -52,13 +52,17 @@ app.post('/register', async (req, res) => {
 
 // Login User
 app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  if (user && await bcrypt.compare(password, user.password)) {
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
-    res.json({ token });
-  } else {
-    res.status(401).json({error: "Invalid credentials"});
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (user && await bcrypt.compare(password, user.password)) {
+      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+      res.json({ token });
+    } else {
+      res.status(401).json({error: "Invalid credentials"});
+    }
+  } catch (err) {
+    return res.status(500).json(err);
   }
 });
 
@@ -76,17 +80,17 @@ app.delete('/user/:userId', async (req, res) => {
 
 // Middleware de autenticação
 const auth = (req, res, next) => {
+  try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
       return res.status(401).json({error: 'Access denied. No token provided.'});
     }
   
-    try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.userId = decoded.userId;
       next();
     } catch (err) {
-        return res.status(400).status(err);
+        return res.status(400).json(err);
     }
 };
 
@@ -94,32 +98,50 @@ const auth = (req, res, next) => {
 
 // Get Tasks
 app.get('/tasks', auth, async (req, res) => {
-  const tasks = await Task.find({ userId: req.userId });
-  return res.json(tasks);
+  try {
+    const tasks = await Task.find({ userId: req.userId });
+    return res.json(tasks);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
 });
 
 // Create Tasks
 app.post('/tasks', auth, async (req, res) => {
-  const { task } = req.body;
-  const newTask = new Task({ userId: req.userId, task });
-  await newTask.save();
-  return res.status(201).json(newTask);
+  try {
+    const { task } = req.body;
+    const newTask = new Task({ userId: req.userId, task });
+    await newTask.save();
+    return res.status(201).json(newTask);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
 });
 
 // Update Tasks
 app.patch('/tasks/:id', auth, async (req, res) => {
-  const { completed } = req.body;
-  await Task.findOneAndUpdate(
-    { _id: req.params.id, userId: req.userId },
-    { completed },
-  );
-  return res.sendStatus(204);
+  try {
+    await Task.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId },
+      [{ $set: { completed: { $not: "$completed" } } }], // Alterna o valor de "completed"
+    );
+
+    return res.sendStatus(204);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json(err);
+  }
 });
+
 
 // Delete Tasks
 app.delete('/tasks/:id', auth, async (req, res) => {
-  await Task.findOneAndDelete({ _id: req.params.id, userId: req.userId });
-  return res.sendStatus(204);
+  try {
+    await Task.findOneAndDelete({ _id: req.params.id, userId: req.userId });
+    return res.sendStatus(204);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
 });
 
 app.listen(5000, () => {
