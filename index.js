@@ -28,6 +28,8 @@ const User = mongoose.model('User', UserSchema);
 const Task = mongoose.model('Task', TaskSchema);
 
 // Endpoints de autenticação
+
+// Create User
 app.post('/register', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -48,6 +50,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
+// Login User
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
@@ -59,49 +62,64 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Delete User with your tasks
+app.delete('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    await Task.deleteMany({userId});
+    await User.findOneAndDelete({ _id: userId });
+    return res.sendStatus(204);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
+})
 
 // Middleware de autenticação
 const auth = (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
-      return res.status(401).send('Access denied. No token provided.');
+      return res.status(401).json({error: 'Access denied. No token provided.'});
     }
   
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.userId = decoded.userId;
       next();
-    } catch (ex) {
-        res.status(400).send('Invalid token.');
+    } catch (err) {
+        return res.status(400).status(err);
     }
 };
 
 // Endpoints de tarefas
+
+// Get Tasks
 app.get('/tasks', auth, async (req, res) => {
   const tasks = await Task.find({ userId: req.userId });
-  res.json(tasks);
+  return res.json(tasks);
 });
 
+// Create Tasks
 app.post('/tasks', auth, async (req, res) => {
   const { task } = req.body;
   const newTask = new Task({ userId: req.userId, task });
   await newTask.save();
-  res.status(201).json(newTask);
+  return res.status(201).json(newTask);
 });
 
+// Update Tasks
 app.patch('/tasks/:id', auth, async (req, res) => {
   const { completed } = req.body;
-  console.log(completed)
   await Task.findOneAndUpdate(
     { _id: req.params.id, userId: req.userId },
     { completed },
   );
-  res.sendStatus(204);
+  return res.sendStatus(204);
 });
 
+// Delete Tasks
 app.delete('/tasks/:id', auth, async (req, res) => {
   await Task.findOneAndDelete({ _id: req.params.id, userId: req.userId });
-  res.sendStatus(204);
+  return res.sendStatus(204);
 });
 
 app.listen(5000, () => {
