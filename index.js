@@ -94,6 +94,19 @@ const auth = (req, res, next) => {
     }
 };
 
+// Exemplo de rota para obter dados do usuário
+app.get('/user', auth, async (req, res) => {
+  try {
+    const {email} = await User.findById(req.userId);
+    if (!email) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    return res.json(email);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Endpoints de tarefas
 
 // Get Tasks
